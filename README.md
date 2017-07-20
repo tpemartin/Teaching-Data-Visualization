@@ -18,3 +18,11 @@
     5. 版面美化與易操作 10%    
     
 - [ETC codebook](http://www.freeway.gov.tw/UserFiles/File/TIMCCC/TDCS使用手冊(tanfb)v3.0-1.pdf)    
+
+
+---
+
+# 其他資訊  
+
+- [538.com](http://fivethirtyeight.com/)  
+  一個以資料出發來報新聞新知的有趣網站。
