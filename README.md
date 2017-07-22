@@ -28,4 +28,6 @@
   一個以資料出發來報新聞新知的有趣網站。  
   
 - [xkcd.com](https://xkcd.com/1235/)  
-  以漫畫形式呈現圖表的網站，作者有出給R及Python的xkcd套件。:smiley: 
+  以漫畫形式呈現圖表的網站，作者有出給R及Python的xkcd套件。:smiley:   
+    - [xkcd for R](http://xkcd.r-forge.r-project.org/)
+    - Python已含在matplotlib套件裡
