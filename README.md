@@ -25,4 +25,7 @@
 # 其他資訊  
 
 - [538.com](http://fivethirtyeight.com/)  
-  一個以資料出發來報新聞新知的有趣網站。
+  一個以資料出發來報新聞新知的有趣網站。  
+  
+- [xkcd.com](https://xkcd.com/1235/)  
+  以漫畫形式呈現圖表的網站，作者有出給R及Python的xkcd套件。:smiley: 
