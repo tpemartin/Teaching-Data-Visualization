@@ -31,3 +31,8 @@
   以漫畫形式呈現圖表的網站，作者有出給R及Python的xkcd套件。:smiley:   
     - [xkcd for R](http://xkcd.r-forge.r-project.org/)
     - Python已含在matplotlib套件裡
+    
+    
+# Python  
+- [圖例參考](http://matplotlib.org/gallery.html)  
+- [資料視覺化及機器學習佈落客 Randal Olson](http://www.randalolson.com/blog/)
