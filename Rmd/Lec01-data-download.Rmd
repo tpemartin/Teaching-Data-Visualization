@@ -1,0 +1,36 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+rm(list=ls())
+```
+
+變數名稱：TimeInterval、GantryFrom、GantryTo、VehicleType、交通量  
+- TimeInterval:報表產製時間,依每 5 分鐘為時階統計產出報表
+ 顯示方式:2013-11-20 22:05:00   
+- GantryFrom: 起點偵測站編 號  
+- GantryTo: 迄點偵測站編號  
+- VehicleType:車種  
+ 31(小客車) 、32(小貨車) 、41(大客車) 、42(大貨車) 、5(聯結車)
+- 交通量:計算以旅次起迄對分類,依據起點時間每 5 分鐘統計,分車種統計交通量 
+
+```{r}
+library(readr)
+TDCS_M08A_20170727_235500 <- read_csv("http://tisvcloud.freeway.gov.tw/history/TDCS/M08A/20170727/23/TDCS_M08A_20170727_235500.csv",
+col_names = c('TimeInterval','GantryFrom','GantryTo','VehicleType','交通量'))
+```
+
+```{r}
+library(dtplyr)
+library(magrittr)
+library(ggplot2)
+tbl_dt(TDCS_M08A_20170727_235500)
+```
+
+```{r}
+TDCS_M08A_20170727_235500 %>% ggplot(aes(x=交通量))+
+  geom_histogram()
+```
+
