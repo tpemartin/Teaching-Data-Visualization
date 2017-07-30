@@ -1,0 +1,71 @@
+---
+title: "Lec02-data-download-XML"
+output: html_notebook
+---
+
+```{r}
+knitr::opts_chunk$set(warning=FALSE,message = FALSE)
+```
+
+```{r}
+rm(list=ls())
+library(XML)
+library(xml2)
+```
+
+
+
+[政府資料開放平台](http://data.gov.tw/)
+```{r, message=FALSE, warning=FALSE}
+library(XML)
+# Save the URL of the xml file in a variable
+
+xml.url <- "http://www.dgbas.gov.tw/public/data/open/Stat/NA/NA8203A2Q.xml"
+# Use the xmlTreePares-function to parse xml file directly from the web
+ 
+xmlfile <- xmlTreeParse(xml.url)
+
+# the xml file is now saved as an object you can easily work with in R:
+class(xmlfile)
+```
+
+```{r}
+# Use the xmlRoot-function to access the top node
+xmltop = xmlRoot(xmlfile)
+# have a look at the XML-code of the first subnodes:
+
+xmlSize(xmltop)
+```
+
+```{r}
+xmlName(xmltop)
+
+```
+
+```{r}
+xmlSize(xmltop)
+names(xmltop)
+```
+
+```{r}
+names(xmltop[[1]])
+```
+
+```{r}
+names(xmltop[[2]])
+```
+
+![image](/fig/xml-民間消費.png)
+```{r, message=FALSE, warning=FALSE}
+class(xmltop[[2]])
+xmlName(xmltop[[2]])
+
+xmltop[[2]][[1]]
+
+xmltop[[2]][[1]][[1]][[1]]
+```
+
+```{r}
+#str(xmltop)
+```
+
