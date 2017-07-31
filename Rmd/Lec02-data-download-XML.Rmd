@@ -137,10 +137,41 @@ xmlSize(level1.branch[[2]])
 ### 肆：取出節點資訊
 
 #### 肆－1：xmlValue 取出節點值  
-
+【參－2,範例1】我們觀察到`level1.branch[[1]]`底下有一個分枝`Prepared`（是第2個分枝）裡面是有值的，可以取出：
 ```{r}
-xmlValue()
+xmlValue(level1.branch[[1]][[2]])
 ```
+
+> 注意：如果分支下面還有很多層分支，它會連更下層分支的值都取回。如果不想取到更下層，可設recursive=FALSE
+
+#### 肆－2：xmlAttrs 查詢節點屬性資訊  
+
+###### 範例1:  
+【參－2,範例1】我們觀察到`level1.branch[[1]]`底下有一個分枝`Table`（是第1個分枝）裡面「沒有」值，但「有屬性」。
+```{r}
+xmlAttrs(level1.branch[[1]][[1]])
+```
+
+###### 範例2:   
+由level1.branch裡取出DataSet分支下的第一個Series子分枝的屬性資訊。（xmlAttrs只會取指定的那一層，故不需考量recursive設定）
+```{r}
+xmlAttrs(level1.branch[[2]][[1]])
+```
+
+#### 肆－3：xmlGetAttr 取出節點某特定屬性的值  
+
+###### 範例1:  
+例用level1.branch取出Header->Table下的Name屬性值。
+```{r}
+xmlGetAttr(level1.branch[[1]][[1]],"Name")
+```
+
+###### 範例2:  
+例用level1.branch取出DataSet->(第一個)Series下的ITEM屬性值。
+```{r}
+xmlGetAttr(level1.branch[[2]][[1]],"ITEM")
+```
+
 
 
 ![xml-structure](./fig/xml-民間消費.png)
