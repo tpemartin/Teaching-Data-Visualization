@@ -189,6 +189,9 @@ ex4_4.2<-xmlApply(level1.branch[[2]][[1]][[1]],xmlAttrs)
 head(ex4_4.2)
 ```
 
+### 伍：更快速指定節點位置的方式XPath
+
+參考語法：[XPath syntax at w3schools.com](https://www.w3schools.com/xml/xpath_syntax.asp)
 
 # Reference
 [source1](https://blog.gtwang.org/r/r-xml-package-parsing-and-generating-xml-tutorial/)
