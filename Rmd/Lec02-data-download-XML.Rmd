@@ -115,7 +115,7 @@ xmlSize(xmltop)
 ```
 
 
-#### 參－2：xmlChildren 裁剪出延伸節點樹狀圖
+#### 參－2：xmlChildren 裁剪出延伸節點支幹
 
 使用xmlChildren來裁剪出xmltop根部長出的兩根支幹。
 ```{r, message=FALSE, warning=FALSE}
@@ -172,36 +172,23 @@ xmlGetAttr(level1.branch[[1]][[1]],"Name")
 xmlGetAttr(level1.branch[[2]][[1]],"ITEM")
 ```
 
+#### 肆－4：xmlApply 對節點下一層的所有子節點進行相同分析
 
 
-![xml-structure](./fig/xml-民間消費.png)
-<!--![xml-structure](/fig/xml-民間消費.png) "主計處民間消費XML資料結構"-->
-
-範例：
-\<DataSet\>  
-    \<Series ITEM="當期價格-民間消費合計(新台幣百萬元)"\>
-```{r, message=FALSE, warning=FALSE}
-xmlName(xmltop[[2]])
-xmlName(xmltop[[2]][[1]])
-```
-
+###### 範例1:  
+針對level1.brach來對DataSet取得底下一層39個Series分枝的ITEM屬性值。[資料太長，我們先存在ex4_4.1並用head()只顯示前5筆]
 ```{r}
-xmlAttrs(xmltop[[2]][[1]])
-xmlGetAttr(xmltop[[2]][[1]],"ITEM")
-```
-```{r}
-xmlAttrs(xmltop[[2]][[1]][[1]])
+ex4_4.1<-xmlApply(level1.branch[[2]],xmlGetAttr,"ITEM")
+head(ex4_4.1)
 ```
 
-```{r, eval=FALSE}
-xmlAttrs(xmltop[[2]][[1]][[1]][[1]])
-xmlGetAttr(xmltop[[2]][[1]][[1]][[1]],"OBS_VALUE")
-data.out<-xmlApply(xmltop[[2]][[1]][[1]],xmlAttrs)
-library(dplyr)
-#data.out %>% unlist() %>%
-  matrix(.,length(.)/2,2,byrow=TRUE)
-#data.out<-unlist(data.out)
+###### 範例2:  
+針對level1.brach來對DataSet->(第一個)Series->(第一個)SeriesProperty取得底下一層的所有Obs的屬性。[資料太長，我們先存在ex4_4.2並用head()只顯示前5筆]
+```{r}
+ex4_4.2<-xmlApply(level1.branch[[2]][[1]][[1]],xmlAttrs)
+head(ex4_4.2)
 ```
+
 
 # Reference
 [source1](https://blog.gtwang.org/r/r-xml-package-parsing-and-generating-xml-tutorial/)
