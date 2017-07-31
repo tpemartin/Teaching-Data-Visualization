@@ -176,22 +176,19 @@ xmlGetAttr(level1.branch[[2]][[1]],"ITEM")
 
 
 ###### 範例1:  
-針對level1.brach來對DataSet取得底下一層39個Series分枝的ITEM屬性值。[資料太長，我們先存在ex4_4.1並用head()只顯示前6筆]
+針對level1.brach來對DataSet取得底下一層39個Series分枝的ITEM屬性值。[資料太長，我們先存在ex4_4.1並用head()只顯示前5筆]
 ```{r}
 ex4_4.1<-xmlApply(level1.branch[[2]],xmlGetAttr,"ITEM")
 head(ex4_4.1)
 ```
 
 ###### 範例2:  
-針對level1.brach來對DataSet->(第一個)Series->(第一個)SeriesProperty取得底下一層的所有Obs的屬性。[資料太長，我們先存在ex4_4.2並用head()只顯示前6筆]
+針對level1.brach來對DataSet->(第一個)Series->(第一個)SeriesProperty取得底下一層的所有Obs的屬性。[資料太長，我們先存在ex4_4.2並用head()只顯示前5筆]
 ```{r}
 ex4_4.2<-xmlApply(level1.branch[[2]][[1]][[1]],xmlAttrs)
 head(ex4_4.2)
 ```
 
-### 伍：更快速指定節點位置的方式XPath
-
-參考語法：[XPath syntax at w3schools.com](https://www.w3schools.com/xml/xpath_syntax.asp)
 
 # Reference
 [source1](https://blog.gtwang.org/r/r-xml-package-parsing-and-generating-xml-tutorial/)
