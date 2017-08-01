@@ -189,28 +189,85 @@ ex4_4.2<-xmlApply(level1.branch[[2]][[1]][[1]],xmlAttrs)
 head(ex4_4.2)
 ```
 
-### 伍：更快速指定節點位置的方式XPath  
+### 伍：更快速指定節點位置的方式XPath    
 
+前面的做法是先將XML資料經過xmlTreeParse翻譯成電腦可理解的結構後，再透過xmlRoot粹取出單純「完整的」樹狀結構，接著才進行所要的分析和變數提取。  
+
+然而在某些狀況，我們已經知道所要的資料在那一條支幹上，這時用xmlRoot去取出整棵樹就顯得多餘。此時，另一種比較快的作法是用XPath來描述那條支幹，將xmlTreeParse後的資訊直接用`getNodeSet()`輔以XPath直接對單純的分枝進行想要的分析即可（例如：xmlApply, xmlAttrs, xmlGetAttr等），這樣可以跳過xmlRoot步驟而加快資料讀取速度。  
+ 
 - 無需用xmlRoot去蕪存菁,資料在xmlTreeParse引入後可直接分析，但要使用`xmlTreeParse(., useInternalNodes=TRUE)`。  
 
-- 需要取出某棵分枝分析時，才用`getNodeSet`把支幹取出來，支幹定義依照XPath語法。  
+   - 重新讀取一次xml.url，以進行之後的XPath應用。
+```{r, message=FALSE, warning=FALSE}
+xmlfile2 <- xmlTreeParse(xml.url,
+                         useInternalNodes = TRUE)
+```
+
+- 需要取出某棵分枝分析時，才用`getNodeSet()`把支幹取出來，支幹定義依照XPath語法。  
 
 - XPath語法可參考：  
   [XPath syntax at w3schools.com](https://www.w3schools.com/xml/xpath_syntax.asp)
 
 ###### 範例1:  
-取得GenericData->DataSet->(1st)Series->(1st)SeriesProperty->所有Obs的節點屬。
-[資料太長，我們先存在ex5.1並用head()只顯示前6筆]
+取得`GenericData->DataSet->(1st)Series->(1st)SeriesProperty->所有Obs`的節點屬性。    
+
+- XPath為`"/GenericData/DataSet/Series[1]/
+             SeriesProperty[1]/Obs"`  
+- 取得節點屬性使用xmlAttrs()。  
+- 針對符合XPath「所有的」節點操作，故使用xmlApply()。  
+
+[資料太長，我們先存在ex5.1並用head()只顯示前6筆]  
 ```{r, message=FALSE, warning=FALSE}
-xmlfile2 <- xmlTreeParse(xml.url,useInternalNodes = TRUE)
 ex5.1<-xmlApply(
   getNodeSet(xmlfile2,"/GenericData/DataSet/Series[1]/
              SeriesProperty[1]/Obs"),
              xmlAttrs)
-head(ex5_4.1)
+head(ex5.1)
+
+
 ```
 
-# Reference
-[source1](https://blog.gtwang.org/r/r-xml-package-parsing-and-generating-xml-tutorial/)
-[R-Blogger](https://www.r-bloggers.com/)
+善用dplyr套作的pipeline寫法會讓程式更容易理解：  
+```{r}
+library(dplyr)
+xmlfile2 %>%  #利用xmlfile2
+  getNodeSet("/GenericData/DataSet/Series[1]/
+             SeriesProperty[1]/Obs") %>%  #取出所要支幹
+  xmlApply(xmlAttrs) %>% #對每個支幹進行xmlAttrs屬性粹取
+  head #列出前面6個屬性
+```
+pipeline有沒有讓程式變得更漂亮易讀呢？
+
+### 陸：轉換成Data Frame格式
+
+前面的取出的資料為串列（list）變數，我們可:  
+
+- 先用`unlist()` 把它轉成向量  
+- 再用`matrix()` 把向量轉成正確的資料矩陣  
+- 再用`as.data.frame()`把矩陣定義成data frame  
+
+下面的例子會用到pipeline語法的`%>%`，`.`與`%<>%`之使用，不清楚的同學請參考： [https://github.com/tidyverse/magrittr](https://github.com/tidyverse/magrittr)   
+```{r}
+ex5.1 %>% unlist %>%
+  matrix(length(.)/2,2,byrow=TRUE) %>%
+  as.data.frame -> final.dataframe 
+```
+
+```{r}
+#重新定變數名稱使用dplyr::rename
+#使用magrittr裡的%<>%語法
+library(magrittr)
+final.dataframe %<>% 
+  rename("時間"="V1","金額"="V2") 
+
+head(final.dataframe)
+```
+
+### 練習作業  
+
+請從開放政府下的[歷年勞動力之教育程度](http://data.gov.tw/node/31064)，進行資料讀取，並轉成data frame格式。請自行清楚定義你所要讀取的變數名稱，並分別用非XPath及XPath法各做一次。 請將你的程式另存新檔，檔名為 XML-{你的名字}.Rmd，之後送出pull request給老師。
+
+### Reference
+[source1](https://blog.gtwang.org/r/r-xml-package-parsing-and-generating-xml-tutorial/)  
+[R-Blogger](https://www.r-bloggers.com/)  
 [初心者](http://molecular-service-science.com/2016/04/07/r-xml-in-practice/)
