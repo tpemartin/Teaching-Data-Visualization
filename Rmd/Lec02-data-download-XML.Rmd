@@ -184,14 +184,31 @@ head(ex4_4.1)
 
 ###### 範例2:  
 針對level1.brach來對DataSet->(第一個)Series->(第一個)SeriesProperty取得底下一層的所有Obs的屬性。[資料太長，我們先存在ex4_4.2並用head()只顯示前6筆]
-```{r}
+```{r, message=FALSE, warning=FALSE}
 ex4_4.2<-xmlApply(level1.branch[[2]][[1]][[1]],xmlAttrs)
 head(ex4_4.2)
 ```
 
-### 伍：更快速指定節點位置的方式XPath
+### 伍：更快速指定節點位置的方式XPath  
 
-參考語法：[XPath syntax at w3schools.com](https://www.w3schools.com/xml/xpath_syntax.asp)
+- 無需用xmlRoot去蕪存菁,資料在xmlTreeParse引入後可直接分析，但要使用`xmlTreeParse(., useInternalNodes=TRUE)`。  
+
+- 需要取出某棵分枝分析時，才用`getNodeSet`把支幹取出來，支幹定義依照XPath語法。  
+
+- XPath語法可參考：  
+  [XPath syntax at w3schools.com](https://www.w3schools.com/xml/xpath_syntax.asp)
+
+###### 範例1:  
+取得GenericData->DataSet->(1st)Series->(1st)SeriesProperty->所有Obs的節點屬。
+[資料太長，我們先存在ex5.1並用head()只顯示前6筆]
+```{r, message=FALSE, warning=FALSE}
+xmlfile2 <- xmlTreeParse(xml.url,useInternalNodes = TRUE)
+ex5.1<-xmlApply(
+  getNodeSet(xmlfile2,"/GenericData/DataSet/Series[1]/
+             SeriesProperty[1]/Obs"),
+             xmlAttrs)
+head(ex5_4.1)
+```
 
 # Reference
 [source1](https://blog.gtwang.org/r/r-xml-package-parsing-and-generating-xml-tutorial/)
