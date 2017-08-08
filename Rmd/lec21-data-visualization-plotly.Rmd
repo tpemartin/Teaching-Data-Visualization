@@ -1,0 +1,230 @@
+---
+title: "Plotly入門"
+output: html_notebook
+---
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+knitr::opts_chunk$set(warning=FALSE,message = FALSE)
+```
+
+plotly是一個可以做出很漂亮圖表的套件，所做出來的圖形還保有原始資料的訊息，可以讓讀者與圖形產生更多的互動。它所對應的分享平台[https://plot.ly/](https://plot.ly/) , 進一步提供給使用者一個資料視覺化設計的團隊協作空間。
+
+- [相關介紹](http://blog.infographics.tw/2015/03/social-chart-visualization-with-plotly/)
+
+### 基礎要求  
+
+##### 1.  基本知識  
+- 完成任何R入門課程  
+
+  - [R for Data Science](http://r4ds.had.co.nz/index.html)。
+
+- RStudio使用環境了解  
+- 基本RMarkdown知識 
+
+##### 2. 連到[https://plot.ly/](https://plot.ly/)註冊一個帳號，並先登入。
+
+### 載入本課程所需套件  
+若缺套件，請自行安裝。
+```{r, message=FALSE, warning=FALSE}
+rm(list=ls())
+library(XML)
+library(xml2)
+library(dtplyr)
+library(dplyr)
+library(plotly)
+```
+
+
+### 範例資料來源  
+[消費者物價指數－特殊分類](http://www.dgbas.gov.tw/public/data/open/Stat/price/PR0103A1M.xml)
+
+此資料為XML資料，若你不清楚它是什麼可以參見：  
+
+- [Lec02-data-download-XML.Rmd](https://github.com/tpemartin/Teaching-Data-Visualization/blob/master/Rmd/Lec02-data-download-XML.Rmd)
+
+若你不想了解XML，可以直接跳到第貳節。
+
+### 壹：引入XML資料  
+
+我們使用XPath法，所以xmlTreeParse要有`useInternalNodes = TRUE`設定。
+```{r, message=FALSE, warning=FALSE}
+xml.url <- "http://statdb.dgbas.gov.tw/PXweb/OpenData/PriceStatistics/PR0104A1M.xml"
+xmlfile <- xmlTreeParse(xml.url, useInternalNodes = TRUE)
+```
+
+#### 壹－1: 找出有那些消費指數項目可選擇  
+
+點入[XML資料網頁](http://statdb.dgbas.gov.tw/PXweb/OpenData/PriceStatistics/PR0104A1M.xml)我們會發現/GenericData/DataSet下的所有Series節點的屬性名稱為ITEM，其值代表了這個資料庫有什麼變數可選，我們透過xmlApply對「每個」Series節點進行屬性粹取(即xmlAttrs)。
+```{r}
+xmlfile %>%  #利用xmlfile2
+getNodeSet("/GenericData/DataSet/Series") %>%  #取出所要支幹
+  xmlApply(xmlAttrs) %>% #對每個支幹進行xmlAttrs屬性粹取
+  unlist %>% #取出的屬性為列串，要先去除列串
+  as.data.frame %>% #轉成data frame
+  rename("可選用變數"=".") %>% # 變數名稱"."改成"可選用變數"
+  mutate(項目=1:n()) -> #再創造一個新的變數叫"項目", 方便之後選變數用
+  available.variables
+```
+
+使用kable產生可選用變數列表：
+```{r, echo=FALSE}
+available.variables %>% 
+  kable #產生表單
+```
+
+
+#### 壹－2: 從表單選變數數字，並設定正確XPath  
+我們選擇9.`可支配所得最低20%家庭-總指數(民國100年=100)`。  
+
+從[XML資料網頁](http://statdb.dgbas.gov.tw/PXweb/OpenData/PriceStatistics/PR0104A1M.xml)"，我們知道第9項變數來自這個XPath:`/GenericData/DataSet/Series[9]/SeriesProperty[1]`底下的所有`Obs`節點的屬性，故完整的XPath會是`/GenericData/DataSet/Series[9]/SeriesProperty[1]/Obs`，其中`Obs`不指定是那個分支。
+
+我們可以直接  
+```
+XPath.set<-"/GenericData/DataSet/Series[9]/SeriesProperty[1]/Obs"
+```
+
+但這裡我們想多點彈性，讓使用者自己選要第幾個Series的支幹，可以寫成：  
+```{r}
+input<-c(9) #選第9項變數
+# 設定XPath
+XPath.set<-paste0("/GenericData/DataSet/Series[",
+                  as.character(input),
+                  "]/SeriesProperty[1]/Obs")
+```
+其中paste0()只是把所有字串黏在一串而已。
+
+#### 壹－3: 依據XPath.set從XML資料產生對應data frame  
+
+```{r}
+xmlfile %>%  #利用xmlfile2
+getNodeSet(XPath.set) %>%  #取出所要支幹
+  xmlApply(xmlAttrs) %>% #對每個支幹進行xmlAttrs屬性粹取
+  unlist %>%
+  matrix(length(.)/2,2,byrow=TRUE) %>%
+  as.data.frame -> chosen.dataframe 
+```
+
+查看取出資料前6筆  
+```{r}
+head(chosen.dataframe)
+```
+發現兩個問題：  
+
+1. 變數名稱沒意義。  
+2. 變數類別不對，均為類別變數(factor) : V1應該是日期，V2應該是數字。  
+
+我們先處理變數名稱和V2的類別。   
+```{r}
+chosen.dataframe %>% 
+  rename("時間"="V1","指數"="V2") %>% #改名稱要有""
+  mutate(指數=as.numeric(as.character(指數))) -> #改變數屬性（無需""）：「類別」轉「數值」變數
+           chosen.dataframe2
+```
+注意：  
+- 類別變數(factor)要轉數字時，必需`as.numeric(as.charater())` 雙層套用。
+
+#### 壹－4: 定義日期變數
+
+不管日期有沒有到「日」，如`1998年8月`，只要是日期就要再加上日成為`1998年8月1日`，只要所有月份都加到同一日就好。  
+
+另外, 要轉成R懂的日期:  
+
+- 日期寫法的年月日間隔最好用`-`號，如`"1998-08-01"。  
+- 日期變數在還沒轉成R懂的隔式前，最好是字元(character)變數，如果不是就用`as.character()` 改變。
+
+
+
+```{r}
+library(lubridate)
+chosen.dataframe2$時間 %>% 
+  as.character %>% #變數改成字元class
+  gsub("M","-",.) %>% #把原本日期中的M都改成-，如"1998M08"變成"1998-08"
+  paste0("-01")  %>% #將每個"yyyy-mm"再加上"-01"成為"yyyy-mm-01", 如"1998-08""1998-08-01"
+  ymd -> #使用lubridate套件ymd()來定義"年月日"型的日期變數
+  chosen.dataframe2$時間
+```
+
+### 貳：Plotly圖形繪製  
+
+參考文件：  
+- [Plotly for R](https://plotly-book.cpsievert.me/)  
+
+
+#### 貳－1: 基本元素  
+
+plotly的繪圖主要由plot_ly()來定義畫布，再用add_{trace}方式來決定要在畫布畫什麼，相信學過ggplot2套件的同學一樣覺得這定義似曾相識。的確，你如果懂其中一套，要學另一套就會變得相對簡單。  
+
+以下程式：
+```{r}
+chosen.dataframe2 %>% #使用前面整理好的data frame
+  plot_ly(x=~時間,y=~指數) %>% #在畫布上定義x軸為時間變數，y軸為指數變數
+  add_lines #在畫布上畫上折線圖，即資料的折線軌跡（trace）
+```
+
+![image](./fig/cpi-example-0.png)
+
+和ggplot2的概念類似，一旦畫布定義好，你可以在上面用pipeline `%>%` 的方式一直加和修改設計（ggplot2是用`+`號），這也是資料視覺化真的能力高下的決戰點。 
+
+同樣資料再多點設計，並把結果存在`p`這個物件。
+```{r}
+library(plotly)
+chosen.dataframe2 %>% 
+  plot_ly(x=~`時間`,y=~指數) %>% 
+  add_lines %>%
+  layout(
+    yaxis = list(side = "right", 
+                 title = "", 
+                 ticklen = 0,
+                 gridwidth = 0.8,
+                 domain=c(0.1,1)),    
+    xaxis=list(showgrid=F,
+               title=""),
+    margin = list(l = 18, r = 30, t = 18),
+    annotations = list(
+      list(xref = "paper", yref = "paper", xanchor = "left", yanchor = "right",
+           x = 0, y = 1, showarrow = F,
+           text = "<b>家庭所得20百分位以下所面對的物價變化</b>",
+           font = list(size = 18)),
+      list(xref = "paper", yref = "paper", xanchor = "left", yanchor = "right",
+           x = 0, y = 0.92, showarrow = F,
+           text = "消費者(月)物價指數,2011=100",
+           font = list(size = 16)),
+      list(xref = "paper", yref = "paper", xanchor = "left", yanchor = "right",
+           x = 0, y = 0, showarrow = F,
+           align = "left",
+           text = "<b>資料出處:</b> 行政院主計處",
+           font = list(size = 12, family = "Arial"))
+      )
+  ) ->p
+p
+```
+
+![image](./fig/cpi-example-1.png)
+
+第二張圖是不是好多了呢？
+
+大家對plotly有基本了解後，之後我們就可以慢慢學習或討論什麼是好的資料視覺化設計。
+
+
+#### 貳－2: 上傳視覺設計平台  
+如果只是畫圖，那ggplot2就很夠了，為什麼要學另一套？  
+
+主要原因是Plotly有一個視覺設計協作分享平台，有點像Github，讓大家把圖形碼上傳並開放一群人一起進行圖形設計協作，作法很簡單，使用如下方法把之前設計的初步圖稿p上傳個人空間就完成了。
+
+```{r}
+api_create(p)
+```
+
+之後把圖稿在plotly的連結給成員就好：  
+
+- [範例圖稿連結](https://plot.ly/~tpemartin/61/)
+
+### 練習作業  
+
+請由[開放政府](http://data.gov.tw)下載任意資料，並用plotly畫一張簡單的圖，將它上傳到你的plotly空間 , 並把你的程式及plotly分享連結另存新檔，檔名為 plotly1-{你的名字}.Rmd，之後送出pull request給老師。
+
+
+# Other Reference  
+
+[Modern Data](https://moderndata.plot.ly/category/data-visualization/)
