@@ -1,0 +1,63 @@
+---
+title: "open data by xml"
+author: "Gary Liu"
+date: "2017年8月7日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###載入套件
+```{r message = F}
+
+library(XML)
+library(dplyr)
+library(magrittr)
+```
+###讀入「歷年勞動力之教育程度」、觀察資料
+```{r results = 'hide'}
+data <- "http://www.dgbas.gov.tw/public/data/open/Cen/Mp04019.xml"
+xmlTreeParse(data) %>% 
+  xmlRoot %>%
+  xmlChildren -> level1.data
+xmlSize(level1.data); xmlSize(level1.data[[1]]) #看看有幾個分支
+```
+
+
+###找出近10年就讀大學以及研究所的平均人數 with XPath
+```{r}
+hw.data <- xmlTreeParse(data, useInternalNodes = T)
+
+xmlApply(getNodeSet(hw.data,"//按年月別分_Year_and_month |
+                    //大專及以上_研究所_小計_Junior_college_and_above_Graduate_school_Total |
+                    //大專及以上_大學_小計_Junior_college_and_above_University_Total"), xmlValue) -> total_data
+
+total_data %>%
+  unlist %>%
+  matrix(length(.)/3, 3, byrow = T) %>%
+  as.data.frame %<>%
+  rename("時間" = "V1", "大學人數" = "V2", "研究所人數" = "V3") %$%
+  .[grep("平均", 時間),] -> final_data  #grep尋找「平均」，僅抓出為每年平均而非各月份的資料
+
+final_data[29:38,] -> final_data1 #只取近10年
+
+row.names(final_data1) <- c(1:10) ; final_data1
+```
+
+###找出2015年就讀大學以及研究所的平均人數 without using XPath
+```{r}
+xmlApply(level1.data[[50]], xmlValue) -> hw.data2
+
+hw.data2 %>%
+  .[c("按年月別分_Year_and_month", 
+      "大專及以上_大學_小計_Junior_college_and_above_University_Total", 
+      "大專及以上_研究所_小計_Junior_college_and_above_Graduate_school_Total")] %>%
+  unlist  %>%
+  matrix(length(.)/3, 3, byrow = T) %>%
+  as.data.frame %<>%
+  rename("時間" = "V1", "大學人數" = "V2", "研究所人數" = "V3") -> final.data2
+
+final.data2
+```
