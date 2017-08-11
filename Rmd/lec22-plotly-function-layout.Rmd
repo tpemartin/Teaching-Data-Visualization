@@ -396,7 +396,7 @@ p3 %>%
 p.final
 ```
 
-![最後p.final圖形](./fig/lec21-data-visualization-plotly-cpi1.png)
+![最後p.final圖形](./fig/lec22-plotly-function-layout-cpi1.png)
 
 
 ### 練習題
