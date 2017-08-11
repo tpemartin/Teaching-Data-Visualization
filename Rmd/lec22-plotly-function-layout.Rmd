@@ -382,7 +382,7 @@ p3
 
 資料視覺化的另一個種點是：
 
-> 沒有必要，整張圖最好只使用一個字型（但可以有粗細大小等等之分）
+> 除非必要，整張圖最好只使用一個字型（但可以有粗細大小等等之分）
 
 這裡我選擇我電腦有的"cwTeX Q YuanZH"字型，同學可自行由以下網址下載Source code：  
 https://github.com/l10n-tw/cwtex-q-fonts-TTFs/releases
