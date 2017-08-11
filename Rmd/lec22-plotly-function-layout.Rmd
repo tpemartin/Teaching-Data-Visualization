@@ -1,0 +1,410 @@
+---
+title: "lec22-plotly-function-layout.Rmd"
+output: html_notebook
+---
+### 課程目標  
+
+- 進一步介紹plotly  
+- 介紹自定函數的應用  
+- 透過自定函數來建立可回收使用的layout設計
+
+### 基礎要求  
+
+##### 1.  基本知識  
+- 此課程為以下課程的延續，最好先完成它:  
+   - [lec21-data-visualization-plotly.Rmd](./lec21-data-visualization-plotly.Rmd)
+
+- 基本了解自定函數  
+   - [R for Data Science](http://r4ds.had.co.nz/index.html) Chapter 19 function.  
+
+- pipeline語法基本了解  
+   - https://github.com/tidyverse/magrittr  
+   
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+knitr::opts_chunk$set(warning=FALSE,message = FALSE)
+```
+
+### 載入本課程所需套件  
+若缺套件，請自行安裝。
+```{r, message=FALSE, warning=FALSE}
+rm(list=ls())
+library(XML)
+library(xml2)
+library(dtplyr)
+library(dplyr)
+library(plotly)
+library(purrr)
+library(lubridate)
+```
+
+
+### 範例資料來源  
+[消費者物價指數－特殊分類](http://www.dgbas.gov.tw/public/data/open/Stat/price/PR0103A1M.xml)
+
+### 程式前情提要  
+
+先前於[lec21-data-visualization-plotly.Rmd](./lec21-data-visualization-plotly.Rmd) ，我們產生了以下2個物件：   
+
+1. xmlfile  
+  引入的xml資料檔  
+  
+2. available.variables  
+  xml資料檔可選擇變數。可用`kable(available.variables)`查看有那些變數可選以及其對應代號。
+  
+```{r, message=FALSE, warning=FALSE, echo=FALSE, collapse=TRUE}
+xml.url <- "http://statdb.dgbas.gov.tw/PXweb/OpenData/PriceStatistics/PR0104A1M.xml"
+xmlfile <- xmlTreeParse(xml.url, useInternalNodes = TRUE)
+
+xmlfile %>%  #利用xmlfile2
+getNodeSet("/GenericData/DataSet/Series") %>%  #取出所要枝幹
+  xmlApply(xmlAttrs) %>% #對每個枝幹進行xmlAttrs屬性粹取
+  unlist %>%
+  as.data.frame %>%
+  rename("可選用變數"=".") %>%
+  mutate(項目=1:n())-> available.variables
+
+available.variables %>% 
+  kable
+```
+
+### 壹：一次選擇多個變數  
+我們打算比較最低20%、中間60％、最高20%所得家庭所面對的消費者物價之變化，由`available.variables`我們得知要用代碼9，17及25。
+
+#### 壹－1：建立XPath.set字元變數儲存對應3條xpath  
+
+- 將所要變數代碼存在input裡。  
+```{r}
+input<-c(9,17,25)
+```
+
+- 產生對應的3個XPath枝幹描述，並存在XPath.set裡。   
+
+  因為3個枝幹只差在Series節點選擇，分別是Series[9],Series[17],Series[25]，前後描述則相同，故我們將input轉成字元後，前後使用`paste0()`貼上相同描述部份：`"/GenericData/DataSet/Series["`及`"]/SeriesProperty[1]/Obs"`。  
+```{r}
+# 設定XPath
+XPath.set<-paste0("/GenericData/DataSet/Series[",
+                  as.character(input),
+                  "]/SeriesProperty[1]/Obs")
+```
+這裡XPath.set會有3個元素，分別代表Series[9]，Series[17]及Series[25]這三條XPath。
+
+#### 壹－2：使用自定函數來有效讀出多條xpath的對應dataframe  
+
+還記得在[lec21-data-visualization-plotly.Rmd](./lec21-data-visualization-plotly.Rmd)的【壹－3】及【壹－4】節，我們提到如何取出某一條xpath的資料, 並透過以下三塊程式碼把它轉出為我們要的dataframe:  
+
+【原程式塊1】 由xpath自xmlfile取出所要枝幹，並存成名為chosen.dataframe的dataframe。  
+```
+xmlfile %>%  
+getNodeSet(xpath) %>%  
+  xmlApply(xmlAttrs) %>% 
+  unlist %>%
+  matrix(length(.)/2,2,byrow=TRUE) %>%
+  as.data.frame -> chosen.dataframe 
+```
+
+【原程式塊2】 chosen.dataframe改變變數名稱，同時把`指數`變數轉成數值。 
+```
+chosen.dataframe %>% 
+  rename("時間"="V1","指數"="V2") %>% 
+  mutate(指數=as.numeric(as.character(指數))) -> 
+           chosen.dataframe2
+```
+
+【原程式塊3】 把`時間`變數轉成日期變數。  
+```
+chosen.dataframe2$時間 %>% 
+  as.character %>% 
+  gsub("M","-",.) %>% 
+  paste0("-01")  %>% 
+  ymd -> 
+  chosen.dataframe2$時間
+```
+
+##### 壹－2－1：善用pipe語法串連3個程式塊  
+
+如果你對pipeline還不熟，可以閱讀:  
+- [https://github.com/tidyverse/magrittr](https://github.com/tidyverse/magrittr)  
+
+`%>%`是pipe寫法，所以可以一直串接成如下一整塊程式碼：  
+
+【pipeline串接程式塊】
+```
+ xmlfile %>% getNodeSet(xpath) %>%  #原程式塊1
+  xmlApply(xmlAttrs) %>% 
+  unlist %>%
+  matrix(length(.)/2,2,byrow=TRUE) %>%
+  as.data.frame %>%
+
+  rename("時間"="V1","指數"="V2") %>% #原程式塊2
+  mutate(
+    指數=as.numeric(as.character(指數)),
+    時間=時間 %>% as.character %>% #原程式塊3 (稍微修改)
+      gsub("M","-",.) %>%
+      paste0("-01")  %>%
+      ymd
+      ) -> xpath.dataframe
+```
+其中【原程式塊3】並不是直接就【原程式塊2】結束的`chosen.dataframe2`直接接下去，而是取出裡面的`時間`變數才串接下去；所以【原程式塊3】是對`時間`變數進行轉換。剛好是【原程式塊2】的`mutate()`函數原本就是針對「變數」在進行轉換，只是【原程式塊2】只有對`指數`變數進行轉換，這裡我們可以直接在程式塊2，修改`mutate(指數=...)`成為`mutate(指數=..., 時間=...)`一次轉換兩個變數。而`時間=...`的等號右邊就是接【原程式塊3】：`chosen.dataframe2$時間 %>% ...`，唯一不同的是`chosen.dataframe2$`可以不寫，因為`mutate()`函數本來就會針對前面串接的dataframe來取對應變數進行轉換，故不用再寫前串dataframe物件名稱。
+
+上面的程式碼，我們只需要把`xpath`換成`XPath.set[1]`那它存出來的`xpath.dataframe`便是「最低20％家戶所得的物價指數」；把`xpath`換成`XPath.set[2]`那它存出來的`xpath.dataframe`便是「中間60％家戶所得的物價指數」；把`xpath`換成`XPath.set[3]`那它存出來的`xpath.dataframe`便是「最高20％家戶所得的物價指數」。
+
+##### 壹－2－2：定義function來代表反覆剪貼的程式碼  
+由於我們要取出三條xpath的dataframe，上述做法會需要反覆剪貼同樣的【pipeline串接程式塊】三次，但其實每次只有換掉xpath的內容而己。對於要反覆剪貼的動作，比較有效率的作法是自定一個函數，我們將此自定函數取名為xpath2dataframe。
+
+`xpath2dataframe()`函數定義寫法如下的：  
+```
+xpath2dataframe <- function(視狀況要改的部份){
+  【pipeline串接程式塊】
+}
+```
+
+這裡「視狀況要改的部份」，即為xpath，所以我們的自定函數要寫成：   
+```{r, message=FALSE, warning=FALSE}
+xpath2dataframe <- function(xpath)  {
+  xmlfile %>% getNodeSet(xpath) %>%  
+  xmlApply(xmlAttrs) %>% 
+  unlist %>%
+  matrix(length(.)/2,2,byrow=TRUE) %>%
+  as.data.frame %>% 
+  rename("時間"="V1","指數"="V2") %>% 
+  mutate(
+    指數=as.numeric(as.character(指數)),
+    時間=時間 %>% as.character %>%
+      gsub("M","-",.) %>%
+      paste0("-01")  %>%
+      ymd)
+}
+```
+
+這個自定函數的區塊結尾的`-> xpath.dataframe`不見了，這是因為在自定函數裡`->`有存起來的結果並不會回傳出去，所以如果有那一句程式，那給了xpath的input並不會有我們所要的dataframe output出來，為了讓最後的dataframe會成為自定函數output，我們把那句拿掉。
+
+有了`xpath2dataframe()`這個自定函數後，下面三行就會產生三個枝幹下對應的三個處理乾淨的dataframe: data1, data2, data3。
+```{r}
+data1<-xpath2dataframe(XPath.set[1])
+data2<-xpath2dataframe(XPath.set[2])
+data3<-xpath2dataframe(XPath.set[3])
+```
+
+
+### 貳：進行plotly繪圖    
+
+在這一節我們只介紹圖形基本元素設計概念。首先，數據分析圖表一定會有  
+
+1. 「主標題(title)」    
+  告訴讀者這張圖要說的故事主題。  
+
+2. 「資料來源(data source)」    
+  顯示數據有憑有據。  
+
+很多時候還會有  
+
+3. 「副標題(subtitle)」    
+  主標題說了故事主題，副標題說明圖表資訊定義。  
+
+#### 貳－1：定義圖形三要素  
+
+基本上上面三個元素是資料視覺化中缺一不可的元素，所以程式一定會對它們做定義（如下範例）：  
+```{r}
+title0<-"不同所得水準家庭所面對的物價變化"
+subtitle0<-"消費者(月)物價指數, 2011=100"
+data.source0<-"行政院主計處"
+```
+
+
+#### 貳－2：套用設計好的樣版函數  
+
+這裡我們提供了一個設計好的樣版自定函數叫`layout.design()`，使用方法為：  
+> p %>% layout.design(title0,subtitle0,data.source0)   
+
+它就會把plotly所產生的圖件p套上layout.design的樣版設計，我們目前先不細部說明樣版函數內容，只要知道怎麼套用`layout.design()`函數就好。
+```{r layout.design, echo=FALSE}
+layout.design<-function(x,title0,subtitle0,data.source0) {
+  x %>% layout(
+      width=760,height=470,
+      margin=list(l=50,r=150,
+                  t=50,b=50),
+      images = list(
+        list(
+          x = 0, 
+          y = 0, 
+          sizex = 0.3, 
+          sizey = 0.1, 
+          source = "https://raw.githubusercontent.com/tpemartin/Teaching-Data-Visualization/master/emajorlogo.jpg", 
+          xref = "paper", 
+          yref = "paper"
+         )
+        ), 
+      annotations = list(
+        list(
+          x = 0,
+          y = 1,
+          font = list(size = 22),
+          showarrow = FALSE,
+          text = paste0("<b>",title0,"</b>"),
+          xanchor = "left",
+          xref = "paper",
+          yref = "paper"
+          ),
+        list(
+          x = 0, 
+          y = 0.91, 
+          font = list(size = 17), 
+          showarrow = FALSE, 
+          text = subtitle0, 
+          xanchor = "left", 
+          xref = "paper", 
+          yref = "paper"
+          ), 
+        list(
+          x = 0.07, 
+          y = -0.05, 
+          font = list(size = 14), 
+          showarrow = FALSE, 
+          text = paste0("<b>資料出處:</b> ",data.source0), 
+          xanchor = "left", 
+          xref = "paper", 
+          yref = "paper"
+          )
+      ), # end of annotations
+      yaxis = list(
+          autorange = TRUE, 
+          domain = c(0.1, 0.93) 
+         ),
+      xaxis = list(
+          autorange = TRUE, 
+          domain = c(0, 1)#, 
+        )
+
+  ) # enclose layout function
+}
+```
+
+##### 範例：空白樣版檢視  
+這個範例會透過plotly_empty()產生空白圖形，再套到樣版上，注意三大元素變數名稱可自取，但在layout.design()裡的變數名稱也要跟著變。  
+```{r, message=FALSE, warning=FALSE}
+title1<-"五大行庫3個月定存利率"
+subtitle1<-"年利率, 單位=%"
+data.source1<-"中央銀行"
+plotly_empty() %>% layout.design(title1,subtitle1,data.source1) 
+```
+
+#### 貳－3：產生資料圖形  
+
+一但有設計好的樣版，使用者只要定義好三元素，再來就是專心畫出基本圖形就好。之前我們學到，plotly的繪圖主要由`plot_ly()`來定義畫布，再用add_{trace}方式來決定要在畫布上畫什麼。  
+
+先前我們有針對三條xpath產生了三個dataframe: data1, data2, data3，每個dataframe都有`時間`和`指數`兩個變數，我們想畫時間趨勢折線圖，所以我們要：  
+
+- `plot_ly(x=~時間, y=~指數)` 定義畫布x軸使用`時間`變數，y軸使用`指數`變數，`~`符號不可少。  
+- add_lines(data=data1) 表示要加上使用data1畫的折線圖。 
+
+除此之外，我們還可以在add_lines()裡使用line=list(color="顏色名稱")來設定顏色。   
+
+- [R的顏色選擇清單](https://www.nceas.ucsb.edu/~frazier/RSpatialGuides/colorPaletteCheatsheet.pdf)
+
+#####貳－3－1：產生基本圖形  
+
+##### 範例：使用先前的3條xpath資料繪製基本圖形，並存成p0物件。  
+```{r, message=FALSE, warning=FALSE}
+p0 <- plot_ly(x=~時間, y=~指數) %>%
+ add_lines(data=data1,
+           line=list(color="navy")) %>% 
+  add_lines(data=data2,
+           line=list(color="skyblue")) %>% 
+  add_lines(data=data3,
+            line=list(color="red")) 
+p0
+```
+
+#####貳－3－2：套用設計樣本  
+
+##### 範例：p0基本圖型套用自定layout.design，存成p1物件。     
+```{r, message=FALSE, warning=FALSE}
+title0<-"不同所得水準家庭所面對的物價變化"
+subtitle0<-"消費者(月)物價指數, 2011=100"
+data.source0<-"行政院主計處"
+p0 %>% layout.design(title0,subtitle0,data.source0) -> p1
+p1
+```
+
+#####貳－3－3：進行微調  
+
+p1完成後通常才是圖形微調的開始，在plotly有兩種做法：  
+
+1. 將p1上傳plot_ly平台調整。  
+
+2. pipe串接layout用程式調整。  
+
+做法1比較簡單，但做法2比較能更了解plotly，且未來可有更彈性應用。我們先由做法2開始。
+
+##### 範例：p1再加些微修正，存成p2物件
+```{r, message=FALSE, warning=FALSE}
+p1 %>% layout(
+          showlegend = FALSE, #不要圖標，即取消原p1右側的trace 0,...,trace 2圖標
+          yaxis = list(
+            autorange = FALSE, #自定y軸定義域
+            gridwidth = 0.8, #y軸對應水平格線粗度
+            range = c(98, 109.405555556), #y軸定義域的下、上限值
+            side = "right", #y軸放右側
+            ticklen = 0, #不在y軸畫刻度線（即刻度線長度為0）
+            title = "" #y軸不放變數名稱
+          ),
+          xaxis = list(
+            autorange = FALSE, #自定x軸定義域
+            range = c("2011-01-01", "2018-07-01"), #x軸定義域的下、上限值
+            showgrid = FALSE, #x軸不畫對應垂直格線
+            title = "", #x軸不放變數名稱
+            type = "date" #x軸定義域為日期變數
+          )
+       ) -> p2
+p2
+```
+
+##### 範例：p2再加上文字註解，存成p3物件
+我們使用`add_annotations()`加文字註解：  
+-  x,y定義要在畫面上那些座標位置加文字，這裡有("2017-12-01",107.2),("2017-12-01",106),("2017-12-01",105.35)三個點要加文字。 
+
+- text定義每個點要加什麼文字。  
+
+- showarrow=FALSE 表示「不要」從文字畫箭頭到座標點。
+```{r, message=FALSE, warning=FALSE}
+p2 %>% add_annotations(
+  x=c("2017-12-01","2017-12-01","2017-12-01"),
+  y=c(107.2,106,105.35),
+  text=c("最低20%","中間60%","最高20%"),
+  showarrow=FALSE
+    ) -> p3
+p3
+```
+
+
+#####貳－3－4：選擇字型  
+
+資料視覺化的另一個種點是：
+
+> 沒有必要，整張圖最好只使用一個字型（但可以有粗細大小等等之分）
+
+這裡我選擇我電腦有的"cwTeX Q YuanZH"字型，同學可自行由以下網址下載Source code：  
+https://github.com/l10n-tw/cwtex-q-fonts-TTFs/releases
+Souce code解壓縮後，將所有字型ttf檔放置到你電腦的字型資料匣裡（請自己找出它的位置）。
+
+##### 範例：p3換上所要字型，存成成品p.final物件
+```{r, message=FALSE, warning=FALSE}
+p3 %>%   
+  layout(font=list(family="cwTeX Q YuanZH")) ->
+  p.final
+p.final
+```
+
+### 練習題
+> 請由此課程中的物價指數還含蓋了七大分類下的消費者物價指數，請由低、中、高所得家庭，選其中一個，以圖顯示這類家庭在七大項的消費者物價指數趨勢，完成後請以相同檔名再加你的名字，送出pull request給老師。
+
+
+# Reference    
+[Plotly for R](https://plotly-book.cpsievert.me/)
+
+[Plotly layout細節](https://plot.ly/r/reference/#Layout_and_layout_style_objects)  
+
+[關於add_annotations](https://plot.ly/r/text-and-annotations/#multiple-annotations)  
+
+[Modern Data](https://moderndata.plot.ly/category/data-visualization/)
