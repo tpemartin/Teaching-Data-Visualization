@@ -134,7 +134,7 @@ checkboxGroupInput(inputId, label, choices, selected = NULL)
 - UI介面大標題titlePanel為： "不同所得家庭水準所面對的物價指數變化"  
 
 - sidebarLayout的Input佈局設計使用checkboxGroupInput：  
-  使用者可以從以下三個選項複選： "最低20%","中間60%","最高20%；  而每個選項傳給server的值分別會是數字：1,2,3；另外，預設選擇是3個選項均選。  
+  使用者可以從以下三個選項複選： "最低20%","中間60%","最高20%；  而每個選項傳給server的值分別會是數字：1,2,3；另外，預設選擇是只選1,3選項（即最低及最高20%）。  
 
 以下為程式寫法：
 ```
