@@ -1,0 +1,93 @@
+---
+title: "plotly1-劉冠麟"
+author: "Gary Liu"
+date: "2017年9月7日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 資料名稱: 歷年各業受僱員工每人每月總薪資
+
+####Packages
+```{r message = F}
+library(XML)
+library(xml2)
+library(dtplyr)
+library(dplyr)
+library(plotly)
+```
+
+####載入XML格式
+```{r}
+site_url <- "http://www.dgbas.gov.tw/public/data/open/Cen/Mp05001.xml"
+site_file <- xmlTreeParse(site_url, useInternalNodes = T)
+```
+
+####抓取變數:年份以及工業、服務業、金融保險、專業科學技術服務業薪資，排除月份的資料
+```{r}
+site_file %>%
+  getNodeSet("//年月別_Year_and_month|//金融及保險業_Financial_and_insurance_activities|//專業科學及技術服務業Professional_scientific_and_technical_activities|//服務業_Services|//工業_Industrial") %>%
+  xmlApply(xmlValue) %>%
+  unlist %>%
+  matrix(length(.)/5, 5, byrow = T) %>%
+  as.data.frame ->
+  site_df
+site_df %>%
+    rename("年份" = "V1", "工業" = "V2", "服務業" = "V3", "金融及保險業" = "V4", "專業科學及技術服務業" = "V5") %>%
+    mutate(年份 = as.character(年份),
+            工業 = as.numeric(as.character(工業)),
+            服務業 = as.numeric(as.character(服務業)),
+            金融及保險業 = as.numeric(as.character(金融及保險業)),
+            專業科學及技術服務業 = as.numeric(as.character(專業科學及技術服務業))) %>%
+    filter(nchar(年份) == 4) ->
+  site_df2 ; site_df2
+```
+
+####畫圖-折線圖
+
+```{r}
+site_df2 %>%
+  plot_ly(x = ~年份, y = ~工業) %>%
+  add_lines -> p1
+site_df2 %>%
+  plot_ly(x = ~年份, y = ~服務業) %>%
+  add_lines -> p2
+site_df2 %>%
+  plot_ly(x = ~年份, y = ~金融及保險業) %>%
+  add_lines -> p3
+site_df2 %>%
+  plot_ly(x = ~年份, y = ~專業科學及技術服務業) %>%
+  add_lines -> p4
+subplot(p1, p2, p3, p4, shareY = T) %>%
+  hide_legend %>%
+  layout(
+    yaxis = list(title = ""),
+    annotations = list(
+      list(xref = "paper", yref = "paper",
+           x = 0.1, y = 0.92, text = "工業", showarrow = F
+           ),
+      list(xref = "paper", yref = "paper",
+           x = 0.4, y = 0.92, text = "服務業", showarrow = F
+           ),
+      list(xref = "paper", yref = "paper",
+           x = 0.62, y = 0.92, text = "金融及保險業", showarrow = F
+           ),
+      list(xref = "paper", yref = "paper",
+           x = 0.96, y = 0.95, text = "專業科學及\n技術服務業", showarrow = F
+           )
+    )
+  ) ->
+my_plotly ; my_plotly
+
+```
+
+####上傳到我的plotly
+#####[我的plotly圖稿](https://plot.ly/~GaryLKL/14)
+```{r}
+Sys.setenv("plotly_username"="GaryLKL")
+Sys.setenv("plotly_api_key"="JKRINlZOMQBRFWgqpnLO")
+api_create(my_plotly)
+```
